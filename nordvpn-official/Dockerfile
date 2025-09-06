@@ -11,6 +11,9 @@ RUN apt-get update && \
     usermod -aG nordvpn root && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+    
+RUN rm -f /etc/resolv.conf \
+    && echo "nameserver 8.8.8.8" > /etc/resolv.conf  # Use Google DNS or your preferred
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
