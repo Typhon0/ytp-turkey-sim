@@ -1,0 +1,47 @@
+volumes:
+  youtube_cookies: {}
+
+services:
+  nordvpn:
+    build: ./nordvpn-official
+    container_name: nordvpn
+    cap_add: [ NET_ADMIN, NET_RAW, SYS_ADMIN ]
+    privileged: true
+    devices: [ "/dev/net/tun:/dev/net/tun" ]
+    environment:
+      - TOKEN=${NORDVPN_TOKEN}
+      - CONNECT=${CONNECT_COUNTRY}
+    healthcheck:
+      test: ["CMD-SHELL", "nordvpn status | grep -E 'Status: Connected|You are connected to'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  cookie-importer:
+    image: youtube-cookie-sim:py3.13
+    depends_on: { nordvpn: { condition: service_healthy } }
+    network_mode: "service:nordvpn"
+    volumes:
+      - youtube_cookies:/app/cookies
+      - ./app/exported_cookies.json:/tmp/exported_cookies.json:ro
+    entrypoint: >
+      sh -c '
+        set -e
+        rm -rf /app/cookies/exported_cookies.json
+        cp /tmp/exported_cookies.json /app/cookies/
+        python -u /app/setup_cookies_headless.py /app/cookies/exported_cookies.json
+        echo "✅ Cookie import done"
+      '
+    restart: "no"
+
+  youtube-viewer:
+    image: youtube-cookie-sim:py3.13
+    depends_on: 
+      nordvpn: { condition: service_healthy }
+      cookie-importer: { condition: service_completed_successfully }
+    network_mode: "service:nordvpn"
+    volumes:
+      - youtube_cookies:/app/cookies
+    command: python -u /app/youtube_cookie_simulator.py
+    restart: unless-stopped      # ← reste démarré en permanence
