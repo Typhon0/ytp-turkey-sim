@@ -20,6 +20,7 @@ services:
 
   cookie-importer:
     image: youtube-cookie-sim:py3.13
+    build: ./app
     depends_on: { nordvpn: { condition: service_healthy } }
     network_mode: "service:nordvpn"
     volumes:
@@ -37,6 +38,7 @@ services:
 
   youtube-viewer:
     image: youtube-cookie-sim:py3.13
+    build: ./app
     depends_on: 
       nordvpn: { condition: service_healthy }
       cookie-importer: { condition: service_completed_successfully }
